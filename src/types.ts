@@ -8,6 +8,15 @@ export interface GroupMember {
   bio?: string;
 }
 
+export type SubmissionStatus =
+  | 'Accepted'
+  | 'Wrong Answer'
+  | 'Time Limit Exceeded'
+  | 'Memory Limit Exceeded'
+  | 'Runtime Error'
+  | 'Compile Error'
+  | 'Attempted';
+
 export interface QuestionSubmission {
   id: string;
   questionId: string;
@@ -16,6 +25,7 @@ export interface QuestionSubmission {
   userInitials: string;
   userAvatarColor: string;
   submissionUrl: string;
+  status: SubmissionStatus;
   timeComplexity: string;
   spaceComplexity: string;
   timeExplanation?: string;
@@ -23,6 +33,10 @@ export interface QuestionSubmission {
   language: string;
   runtime?: string;
   memory?: string;
+  runtimePercentile?: string;
+  memoryPercentile?: string;
+  testcasesPassed?: string;
+  errorMessage?: string;
   approach?: string;
   codeSnippet?: string;
   submittedAt: string;

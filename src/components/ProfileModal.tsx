@@ -13,6 +13,8 @@ import {
   Calendar,
   Sparkles,
   Trash2,
+  XCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -49,16 +51,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const todayQuestions = questions.filter((q) => q.date === selectedDate);
   const solvedTodayQuestionIds = new Set(
     memberSubmissions
-      .filter((s) => todayQuestions.some((q) => q.id === s.questionId))
+      .filter((s) => (!s.status || s.status === 'Accepted') && todayQuestions.some((q) => q.id === s.questionId))
       .map((s) => s.questionId)
   );
 
-  // Calculate difficulty breakdown
+  const acceptedSubmissions = memberSubmissions.filter((s) => !s.status || s.status === 'Accepted');
+
+  // Calculate difficulty breakdown for solved questions
   let easyCount = 0;
   let mediumCount = 0;
   let hardCount = 0;
 
-  memberSubmissions.forEach((sub) => {
+  acceptedSubmissions.forEach((sub) => {
     const q = questions.find((item) => item.id === sub.questionId);
     if (q) {
       if (q.difficulty === 'Easy') easyCount++;
@@ -133,7 +137,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="grid grid-cols-4 gap-2 mt-5 pt-4 border-t border-slate-200/80">
             <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-center">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Solved</span>
-              <span className="text-lg font-bold font-mono text-slate-900">{memberSubmissions.length}</span>
+              <span className="text-lg font-bold font-mono text-slate-900">{acceptedSubmissions.length}</span>
             </div>
             <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-center">
               <span className="text-[10px] uppercase font-bold text-emerald-600 block">Easy</span>
@@ -268,13 +272,36 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         }}
                         className="flex-1 cursor-pointer"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-slate-900 hover:text-blue-600 transition-colors">
                             {q?.title || 'LeetCode Question'}
                           </span>
                           <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                             {sub.language}
                           </span>
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.2 rounded-full border ${
+                              !sub.status || sub.status === 'Accepted'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : sub.status === 'Time Limit Exceeded'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {!sub.status || sub.status === 'Accepted' ? (
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                            ) : sub.status === 'Time Limit Exceeded' ? (
+                              <Clock className="w-2.5 h-2.5" />
+                            ) : (
+                              <XCircle className="w-2.5 h-2.5" />
+                            )}
+                            <span>{sub.status || 'Accepted'}</span>
+                          </span>
+                          {sub.testcasesPassed && (
+                            <span className="text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.2 rounded">
+                              {sub.testcasesPassed}
+                            </span>
+                          )}
                         </div>
                         {sub.approach && (
                           <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">

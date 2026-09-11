@@ -29,6 +29,15 @@ export interface GroupMember {
   bio?: string;
 }
 
+export type SubmissionStatus =
+  | 'Accepted'
+  | 'Wrong Answer'
+  | 'Time Limit Exceeded'
+  | 'Memory Limit Exceeded'
+  | 'Runtime Error'
+  | 'Compile Error'
+  | 'Attempted';
+
 export interface QuestionSubmission {
   id: string;
   questionId: string;
@@ -37,6 +46,7 @@ export interface QuestionSubmission {
   userInitials: string;
   userAvatarColor: string;
   submissionUrl: string;
+  status?: SubmissionStatus;
   timeComplexity: string;
   spaceComplexity: string;
   timeExplanation?: string;
@@ -44,6 +54,10 @@ export interface QuestionSubmission {
   language: string;
   runtime?: string;
   memory?: string;
+  runtimePercentile?: string;
+  memoryPercentile?: string;
+  testcasesPassed?: string;
+  errorMessage?: string;
   approach?: string;
   codeSnippet?: string;
   submittedAt: string;
@@ -218,6 +232,7 @@ const defaultSubmissions: QuestionSubmission[] = [
     userInitials: 'AC',
     userAvatarColor: 'from-blue-500 to-indigo-600',
     submissionUrl: 'https://leetcode.com/problems/two-sum/submissions/1209384756/',
+    status: 'Accepted',
     timeComplexity: 'O(n)',
     spaceComplexity: 'O(n)',
     timeExplanation: 'Single pass through nums array with O(1) hash map operations.',
@@ -245,6 +260,7 @@ const defaultSubmissions: QuestionSubmission[] = [
     userInitials: 'SP',
     userAvatarColor: 'from-emerald-500 to-teal-600',
     submissionUrl: 'https://leetcode.com/problems/two-sum/submissions/1209418290/',
+    status: 'Accepted',
     timeComplexity: 'O(n)',
     spaceComplexity: 'O(n)',
     timeExplanation: 'Pre-populating lookup map and instant key verification in one traversal.',
@@ -275,6 +291,7 @@ public:
     userInitials: 'SP',
     userAvatarColor: 'from-emerald-500 to-teal-600',
     submissionUrl: 'https://leetcode.com/problems/trapping-rain-water/submissions/1209501837/',
+    status: 'Accepted',
     timeComplexity: 'O(n)',
     spaceComplexity: 'O(1)',
     timeExplanation: 'Left and right two-pointer scan meeting in the middle in one pass.',
@@ -299,7 +316,7 @@ public:
                 r_max = max(r_max, height[r])
                 water += r_max - height[r]
         return water`,
-    submittedAt: new Date(Date.now() - 3600000 * 1.2).toISOString(),
+    submittedAt: new Date(Date.now() - 3600000 * 1).toISOString(),
   },
 ];
 
@@ -519,6 +536,15 @@ The JSON MUST conform to this exact structure:
         userInitials,
         userAvatarColor,
         submissionUrl,
+        status, // 'Accepted' | 'Wrong Answer' | 'Time Limit Exceeded' | 'Memory Limit Exceeded' | 'Runtime Error' | 'Compile Error'
+        language,
+        runtime,
+        memory,
+        runtimePercentile,
+        memoryPercentile,
+        testcasesPassed,
+        errorMessage,
+        approach,
         codeSnippet,
       } = req.body;
 
@@ -531,12 +557,15 @@ The JSON MUST conform to this exact structure:
         return;
       }
 
-      // Find problem to give context to Gemini
+      // Find problem to give context
       const problem = questions.find((q) => q.id === questionId);
 
-      // Smart default analysis heuristics
-      let detectedLang = 'Python 3';
-      if (codeSnippet) {
+      const finalStatus: SubmissionStatus = (status as SubmissionStatus) || 'Accepted';
+      const isAccepted = finalStatus === 'Accepted';
+
+      // Smart default analysis heuristics based on provided language and code
+      let detectedLang = language || '';
+      if (!detectedLang && codeSnippet) {
         if (codeSnippet.includes('#include') || codeSnippet.includes('std::') || codeSnippet.includes('vector<')) {
           detectedLang = 'C++';
         } else if (codeSnippet.includes('public class') || codeSnippet.includes('System.out')) {
@@ -547,53 +576,87 @@ The JSON MUST conform to this exact structure:
           detectedLang = 'Python 3';
         }
       }
+      if (!detectedLang) {
+        detectedLang = 'Python 3';
+      }
+
+      // Format accurate runtime & memory
+      let finalRuntime = '';
+      let finalMemory = '';
+
+      if (isAccepted) {
+        finalRuntime = runtime ? String(runtime) : 'Recorded on LeetCode';
+        finalMemory = memory ? String(memory) : 'Recorded on LeetCode';
+      } else {
+        finalRuntime = testcasesPassed
+          ? `${testcasesPassed}`
+          : (runtime ? String(runtime) : `N/A (${finalStatus})`);
+        finalMemory = memory ? String(memory) : 'N/A';
+      }
+
+      let defaultApproach = '';
+      if (approach && approach.trim()) {
+        defaultApproach = approach.trim();
+      } else if (isAccepted) {
+        defaultApproach = `Algorithmic solution in ${detectedLang}`;
+      } else if (finalStatus === 'Time Limit Exceeded') {
+        defaultApproach = `Attempted solution - Exceeded Time Limit (TLE)`;
+      } else if (finalStatus === 'Wrong Answer') {
+        defaultApproach = `Attempted solution - Wrong Answer on testcases`;
+      } else {
+        defaultApproach = `Attempted solution - ${finalStatus}`;
+      }
 
       let analysis = {
-        timeComplexity: problem?.recommendedComplexity?.time || 'O(n)',
+        timeComplexity: isAccepted
+          ? (problem?.recommendedComplexity?.time || 'O(n)')
+          : (finalStatus === 'Time Limit Exceeded' ? 'O(n²)' : (problem?.recommendedComplexity?.time || 'O(n)')),
         spaceComplexity: problem?.recommendedComplexity?.space || 'O(1)',
-        timeExplanation: 'Optimal single pass traversal with balanced Big-O operations.',
-        spaceExplanation: 'Memory overhead bounded within linear/constant auxiliary storage.',
+        timeExplanation: isAccepted
+          ? 'Solution runs within required LeetCode constraints.'
+          : (finalStatus === 'Time Limit Exceeded'
+            ? 'High time complexity caused execution to exceed time limit (TLE) on large inputs.'
+            : `Attempt halted on testcases with status: ${finalStatus}.`),
+        spaceExplanation: 'Auxiliary memory usage during execution.',
         language: detectedLang,
-        runtime: '42 ms',
-        memory: '16.4 MB',
-        approach: 'Optimal algorithmic implementation',
+        runtime: finalRuntime,
+        memory: finalMemory,
+        approach: defaultApproach,
         codeSnippet: codeSnippet || '',
       };
 
       const ai = getGeminiClient();
       if (ai) {
         try {
-          const prompt = `You are a strict LeetCode submission evaluator and algorithms expert.
-The user has completed a LeetCode problem:
-- Problem: "${problem ? problem.title : 'LeetCode Problem'}"
-- Submission URL provided: "${submissionUrl || 'N/A'}"
-- Solution code snippet (if provided):
-\`\`\`
-${codeSnippet || 'No code provided directly. Infer from standard optimal solution or URL patterns.'}
+          const prompt = `You are an algorithmic complexity evaluator for LeetCode submissions.
+Problem details:
+- Title: "${problem ? problem.title : 'LeetCode Problem'}"
+- LeetCode Target Efficiency: Time: ${problem?.recommendedComplexity?.time || 'O(n)'}, Space: ${problem?.recommendedComplexity?.space || 'O(1)'}
+- Actual Submission Outcome: "${finalStatus}" ${testcasesPassed ? `(${testcasesPassed})` : ''} ${errorMessage ? `(Note: ${errorMessage})` : ''}
+- Programming Language: "${detectedLang}"
+- Submission Link: "${submissionUrl || 'N/A'}"
+- Code snippet provided:
+\`\`\`${detectedLang}
+${codeSnippet || 'No raw code provided; evaluate based on user submission context and status.'}
 \`\`\`
 
-Evaluate this submission. Extract or compute:
-1. Time Complexity (Big-O notation, e.g. "O(n)", "O(n log n)", "O(1)")
-2. Explanation for Time Complexity (1-2 sentences)
-3. Space Complexity (Big-O notation, e.g. "O(1)", "O(n)", "O(k)")
-4. Explanation for Space Complexity (1-2 sentences)
-5. Programming Language (e.g. "Python 3", "C++", "Java", "TypeScript", "Go", "Rust")
-6. Runtime estimate or metric (e.g. "45 ms")
-7. Memory estimate or metric (e.g. "16.4 MB")
-8. Core algorithmic approach (e.g. "Two Pointers with Left/Right Pointers", "Monotonic Stack", "Hash Map Complement")
-9. Clean, formatted solution code snippet (if code was provided or standard solution in that language)
+IMPORTANT GUIDELINES:
+1. The user's submission outcome on LeetCode was "${finalStatus}".
+2. If the outcome is NOT Accepted (e.g. Wrong Answer, Time Limit Exceeded, Runtime Error):
+   - DO NOT label the approach as "Optimal"!
+   - If it was "Time Limit Exceeded", determine what high complexity (e.g. O(n^2), O(2^n), O(n^3)) likely caused TLE and explain it clearly in 1-2 sentences.
+   - If it was "Wrong Answer", explain what potential edge case or bug was encountered (e.g. integer overflow, missing duplicate handling, off-by-one).
+   - In "approach", accurately describe the method attempted (e.g. "Brute force search with nested loops", "Recursive tree traversal without memoization").
+3. Preserve the exact programming language "${detectedLang}".
+4. Calculate Big-O Time Complexity and Space Complexity.
 
-Return strictly a JSON object with this exact shape:
+Return strictly a JSON object:
 {
-  "timeComplexity": "O(n)",
+  "timeComplexity": "O(...)",
   "timeExplanation": "...",
-  "spaceComplexity": "O(1)",
+  "spaceComplexity": "O(...)",
   "spaceExplanation": "...",
-  "language": "Python 3",
-  "runtime": "...",
-  "memory": "...",
-  "approach": "...",
-  "codeSnippet": "..."
+  "approach": "..."
 }`;
 
           const response = await ai.models.generateContent({
@@ -614,17 +677,11 @@ Return strictly a JSON object with this exact shape:
           }
 
           if (parsed && parsed.timeComplexity) {
-            analysis = {
-              timeComplexity: parsed.timeComplexity,
-              spaceComplexity: parsed.spaceComplexity || 'O(1)',
-              timeExplanation: parsed.timeExplanation || analysis.timeExplanation,
-              spaceExplanation: parsed.spaceExplanation || analysis.spaceExplanation,
-              language: parsed.language || detectedLang,
-              runtime: parsed.runtime || '45 ms',
-              memory: parsed.memory || '16.8 MB',
-              approach: parsed.approach || 'Optimal approach',
-              codeSnippet: parsed.codeSnippet || codeSnippet || '',
-            };
+            analysis.timeComplexity = parsed.timeComplexity;
+            if (parsed.spaceComplexity) analysis.spaceComplexity = parsed.spaceComplexity;
+            if (parsed.timeExplanation) analysis.timeExplanation = parsed.timeExplanation;
+            if (parsed.spaceExplanation) analysis.spaceExplanation = parsed.spaceExplanation;
+            if (parsed.approach && !approach) analysis.approach = parsed.approach;
           }
         } catch (geminiErr) {
           console.warn('Gemini submission analysis error, proceeding with heuristic metrics:', geminiErr);
@@ -644,15 +701,20 @@ Return strictly a JSON object with this exact shape:
         userInitials: userInitials || 'LC',
         userAvatarColor: userAvatarColor || 'from-blue-500 to-indigo-600',
         submissionUrl: submissionUrl || (problem ? problem.url : 'https://leetcode.com'),
+        status: finalStatus,
         timeComplexity: analysis.timeComplexity,
         spaceComplexity: analysis.spaceComplexity,
         timeExplanation: analysis.timeExplanation,
         spaceExplanation: analysis.spaceExplanation,
-        language: analysis.language,
-        runtime: analysis.runtime,
-        memory: analysis.memory,
+        language: detectedLang,
+        runtime: finalRuntime,
+        memory: finalMemory,
+        runtimePercentile: runtimePercentile || undefined,
+        memoryPercentile: memoryPercentile || undefined,
+        testcasesPassed: testcasesPassed || undefined,
+        errorMessage: errorMessage || undefined,
         approach: analysis.approach,
-        codeSnippet: analysis.codeSnippet || codeSnippet,
+        codeSnippet: codeSnippet || analysis.codeSnippet,
         submittedAt: new Date().toISOString(),
       };
 

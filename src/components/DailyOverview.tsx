@@ -59,7 +59,10 @@ export const DailyOverview: React.FC<DailyOverviewProps> = ({
   // Calculate each member's completion for this day
   const memberProgress = members.map((member) => {
     const solvedCount = dayQuestions.filter((q) =>
-      daySubmissions.some((s) => s.questionId === q.id && s.userId === member.id)
+      daySubmissions.some((s) => s.questionId === q.id && s.userId === member.id && (!s.status || s.status === 'Accepted'))
+    ).length;
+    const attemptedCount = dayQuestions.filter((q) =>
+      daySubmissions.some((s) => s.questionId === q.id && s.userId === member.id && s.status && s.status !== 'Accepted')
     ).length;
     const isAllDone = dayQuestions.length > 0 && solvedCount === dayQuestions.length;
     const isPartial = solvedCount > 0 && solvedCount < dayQuestions.length;
@@ -67,6 +70,7 @@ export const DailyOverview: React.FC<DailyOverviewProps> = ({
     return {
       member,
       solvedCount,
+      attemptedCount,
       totalCount: dayQuestions.length,
       isAllDone,
       isPartial,
@@ -154,7 +158,7 @@ export const DailyOverview: React.FC<DailyOverviewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {memberProgress.map(({ member, solvedCount, totalCount, isAllDone, isPartial }) => {
+            {memberProgress.map(({ member, solvedCount, attemptedCount, totalCount, isAllDone, isPartial }) => {
               const isCurrent = currentMember?.id === member.id;
               return (
                 <div
@@ -200,9 +204,14 @@ export const DailyOverview: React.FC<DailyOverviewProps> = ({
                         {solvedCount}/{totalCount} Done
                       </span>
                     ) : isPartial ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-full">
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                         {solvedCount}/{totalCount} Solved
+                      </span>
+                    ) : attemptedCount > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        {attemptedCount} Attempted
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">

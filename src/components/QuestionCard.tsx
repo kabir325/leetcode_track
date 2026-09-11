@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface QuestionCardProps {
@@ -188,13 +189,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   {questionSubmissions.map((sub) => {
                     const member = members.find((m) => m.id === sub.userId);
+                    const subStatus = sub.status || 'Accepted';
+                    const isPassed = subStatus === 'Accepted';
+
                     return (
                       <button
                         key={sub.id}
                         id={`avatar-submission-${sub.id}`}
                         onClick={() => onOpenSolutionModal(sub, question)}
-                        title={`Click to view ${sub.userName}'s solution (${sub.timeComplexity}, ${sub.spaceComplexity})`}
-                        className="group relative flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer"
+                        title={`Click to view ${sub.userName}'s submission: ${subStatus} (${sub.timeComplexity}, ${sub.spaceComplexity})`}
+                        className={`group relative flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white border shadow-2xs transition-all cursor-pointer ${
+                          isPassed
+                            ? 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30'
+                            : subStatus === 'Time Limit Exceeded'
+                            ? 'border-amber-300 bg-amber-50/40 hover:bg-amber-50'
+                            : 'border-rose-300 bg-rose-50/40 hover:bg-rose-50'
+                        }`}
                       >
                         {/* Circular Avatar Logo */}
                         <div
@@ -207,10 +217,22 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                         <span className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
                           {sub.userName.split(' ')[0]}
                         </span>
-                        {/* Time complexity chip */}
-                        <span className="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded">
-                          {sub.timeComplexity}
-                        </span>
+                        {/* Status / Complexity chip */}
+                        {isPassed ? (
+                          <span className="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded">
+                            {sub.timeComplexity}
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                              subStatus === 'Time Limit Exceeded'
+                                ? 'text-amber-800 bg-amber-100'
+                                : 'text-rose-800 bg-rose-100'
+                            }`}
+                          >
+                            {subStatus === 'Time Limit Exceeded' ? 'TLE' : subStatus === 'Wrong Answer' ? 'WA' : 'ERR'}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -225,10 +247,31 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             {/* Current user completion status */}
             <div className="shrink-0">
               {currentUserSubmission ? (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
-                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>You Solved ({currentUserSubmission.timeComplexity})</span>
-                </span>
+                (!currentUserSubmission.status || currentUserSubmission.status === 'Accepted') ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200">
+                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>You Solved ({currentUserSubmission.timeComplexity})</span>
+                  </span>
+                ) : (
+                  <span
+                    className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
+                      currentUserSubmission.status === 'Time Limit Exceeded'
+                        ? 'text-amber-800 bg-amber-100 border-amber-300'
+                        : 'text-rose-800 bg-rose-100 border-rose-300'
+                    }`}
+                  >
+                    <AlertCircle className="w-3.5 h-3.5 stroke-[2]" />
+                    <span>
+                      Attempted (
+                      {currentUserSubmission.status === 'Time Limit Exceeded'
+                        ? 'TLE'
+                        : currentUserSubmission.status === 'Wrong Answer'
+                        ? 'Wrong Answer'
+                        : currentUserSubmission.status}
+                      )
+                    </span>
+                  </span>
+                )
               ) : (
                 <span className="text-xs text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60">
                   Pending for you

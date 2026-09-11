@@ -218,6 +218,15 @@ export async function submitSolution(params: {
   userInitials: string;
   userAvatarColor: string;
   submissionUrl: string;
+  status?: import('../types.ts').SubmissionStatus;
+  language?: string;
+  runtime?: string;
+  memory?: string;
+  runtimePercentile?: string;
+  memoryPercentile?: string;
+  testcasesPassed?: string;
+  errorMessage?: string;
+  approach?: string;
   codeSnippet?: string;
 }): Promise<{ submission: QuestionSubmission; submissions: QuestionSubmission[] }> {
   try {
@@ -238,16 +247,38 @@ export async function submitSolution(params: {
     console.warn('Backend analyze-submission endpoint unavailable, falling back to local evaluation:', err);
     const local = getStoredLocalData();
 
-    let detectedLang = 'Python 3';
-    if (params.codeSnippet) {
+    const finalStatus: import('../types.ts').SubmissionStatus = params.status || 'Accepted';
+    const isAccepted = finalStatus === 'Accepted';
+
+    let detectedLang = params.language || '';
+    if (!detectedLang && params.codeSnippet) {
       if (params.codeSnippet.includes('#include') || params.codeSnippet.includes('std::')) {
         detectedLang = 'C++';
       } else if (params.codeSnippet.includes('public class')) {
         detectedLang = 'Java';
       } else if (params.codeSnippet.includes('function') || params.codeSnippet.includes('const')) {
         detectedLang = 'JavaScript';
+      } else if (params.codeSnippet.includes('def ') || params.codeSnippet.includes('class Solution:')) {
+        detectedLang = 'Python 3';
       }
     }
+    if (!detectedLang) {
+      detectedLang = 'Python 3';
+    }
+
+    const finalRuntime = isAccepted
+      ? (params.runtime || 'Recorded on LeetCode')
+      : (params.testcasesPassed ? `${params.testcasesPassed}` : (params.runtime || `N/A (${finalStatus})`));
+
+    const finalMemory = isAccepted
+      ? (params.memory || 'Recorded on LeetCode')
+      : (params.memory || 'N/A');
+
+    const defaultApproach = params.approach
+      ? params.approach
+      : isAccepted
+      ? `Algorithmic solution in ${detectedLang}`
+      : `Attempted solution - ${finalStatus}`;
 
     const fallbackSubmission: QuestionSubmission = {
       id: `sub-${Date.now()}`,
@@ -257,14 +288,23 @@ export async function submitSolution(params: {
       userInitials: params.userInitials,
       userAvatarColor: params.userAvatarColor,
       submissionUrl: params.submissionUrl,
-      timeComplexity: 'O(n)',
+      status: finalStatus,
+      timeComplexity: isAccepted ? 'O(n)' : (finalStatus === 'Time Limit Exceeded' ? 'O(n²)' : 'O(n)'),
       spaceComplexity: 'O(1)',
-      timeExplanation: 'Standard linear pass through input elements',
-      spaceExplanation: 'Constant auxiliary variables memory usage',
+      timeExplanation: isAccepted
+        ? 'Passes within LeetCode time limits'
+        : (finalStatus === 'Time Limit Exceeded'
+          ? 'High time complexity caused execution to exceed time limit (TLE)'
+          : `Execution halted with ${finalStatus}`),
+      spaceExplanation: 'Memory overhead as reported on LeetCode',
       language: detectedLang,
-      runtime: '40 ms',
-      memory: '16.5 MB',
-      approach: 'Optimal implementation',
+      runtime: finalRuntime,
+      memory: finalMemory,
+      runtimePercentile: params.runtimePercentile,
+      memoryPercentile: params.memoryPercentile,
+      testcasesPassed: params.testcasesPassed,
+      errorMessage: params.errorMessage,
+      approach: defaultApproach,
       codeSnippet: params.codeSnippet,
       submittedAt: new Date().toISOString(),
     };
