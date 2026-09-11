@@ -351,3 +351,123 @@ export function getCurrentUserId(): string | null {
 export function setCurrentUserId(userId: string): void {
   localStorage.setItem(CURRENT_USER_KEY, userId);
 }
+
+export async function deleteQuestion(
+  questionId: string
+): Promise<{ questions: DailyQuestion[]; submissions: QuestionSubmission[] }> {
+  const local = getStoredLocalData();
+  local.questions = local.questions.filter((q) => q.id !== questionId);
+  local.submissions = local.submissions.filter((s) => s.questionId !== questionId);
+  saveStoredLocalData(local);
+
+  try {
+    const res = await safeFetchJson<{ questions: DailyQuestion[]; submissions: QuestionSubmission[] }>(
+      `/api/questions/${questionId}`,
+      { method: 'DELETE' },
+      'Failed to delete question'
+    );
+    local.questions = res.questions;
+    local.submissions = res.submissions;
+    saveStoredLocalData(local);
+    return res;
+  } catch (err) {
+    console.warn('Backend delete question failed, handled in local storage:', err);
+    return { questions: local.questions, submissions: local.submissions };
+  }
+}
+
+export async function deleteMember(
+  memberId: string
+): Promise<{ members: GroupMember[]; submissions: QuestionSubmission[] }> {
+  const local = getStoredLocalData();
+  local.members = local.members.filter((m) => m.id !== memberId);
+  local.submissions = local.submissions.filter((s) => s.userId !== memberId);
+  saveStoredLocalData(local);
+
+  if (getCurrentUserId() === memberId) {
+    if (local.members.length > 0) {
+      setCurrentUserId(local.members[0].id);
+    } else {
+      localStorage.removeItem(CURRENT_USER_KEY);
+    }
+  }
+
+  try {
+    const res = await safeFetchJson<{ members: GroupMember[]; submissions: QuestionSubmission[] }>(
+      `/api/members/${memberId}`,
+      { method: 'DELETE' },
+      'Failed to delete member'
+    );
+    local.members = res.members;
+    local.submissions = res.submissions;
+    saveStoredLocalData(local);
+    return res;
+  } catch (err) {
+    console.warn('Backend delete member failed, handled in local storage:', err);
+    return { members: local.members, submissions: local.submissions };
+  }
+}
+
+export async function deleteSubmission(
+  submissionId: string
+): Promise<{ submissions: QuestionSubmission[] }> {
+  const local = getStoredLocalData();
+  local.submissions = local.submissions.filter((s) => s.id !== submissionId);
+  saveStoredLocalData(local);
+
+  try {
+    const res = await safeFetchJson<{ submissions: QuestionSubmission[] }>(
+      `/api/submissions/${submissionId}`,
+      { method: 'DELETE' },
+      'Failed to delete submission'
+    );
+    local.submissions = res.submissions;
+    saveStoredLocalData(local);
+    return res;
+  } catch (err) {
+    console.warn('Backend delete submission failed, handled in local storage:', err);
+    return { submissions: local.submissions };
+  }
+}
+
+export async function resetGroupData(): Promise<GroupData> {
+  try {
+    const res = await safeFetchJson<GroupData>(
+      '/api/reset-data',
+      { method: 'POST' },
+      'Failed to reset data'
+    );
+    saveStoredLocalData(res);
+    return res;
+  } catch (err) {
+    console.warn('Backend reset failed, resetting local data:', err);
+    const resetData: GroupData = {
+      members: [...defaultSeedMembers],
+      questions: [],
+      submissions: [],
+    };
+    saveStoredLocalData(resetData);
+    return resetData;
+  }
+}
+
+export async function clearAllQuestionsAndSubmissions(): Promise<GroupData> {
+  const local = getStoredLocalData();
+  local.questions = [];
+  local.submissions = [];
+  saveStoredLocalData(local);
+
+  try {
+    const res = await safeFetchJson<GroupData>(
+      '/api/clear-all',
+      { method: 'POST' },
+      'Failed to clear data'
+    );
+    saveStoredLocalData(res);
+    return res;
+  } catch (err) {
+    console.warn('Backend clear failed, handled in local storage:', err);
+    return local;
+  }
+}
+

@@ -12,6 +12,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from 'lucide-react';
 
 interface QuestionCardProps {
@@ -22,6 +23,7 @@ interface QuestionCardProps {
   onOpenDetailsModal: (question: DailyQuestion) => void;
   onOpenSubmitModal: (question: DailyQuestion) => void;
   onOpenSolutionModal: (submission: QuestionSubmission, question: DailyQuestion) => void;
+  onDeleteQuestion: (question: DailyQuestion) => void;
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
@@ -32,6 +34,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   onOpenDetailsModal,
   onOpenSubmitModal,
   onOpenSolutionModal,
+  onDeleteQuestion,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -91,17 +94,28 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
             </div>
           </div>
 
-          {/* Quick External Link */}
-          <a
-            href={question.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open Problem in LeetCode"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 px-2.5 py-1.5 rounded-lg transition-colors shrink-0 self-start"
-          >
-            <span>LeetCode</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          {/* Quick External Link & Delete */}
+          <div className="flex items-center gap-1.5 shrink-0 self-start">
+            <a
+              href={question.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open Problem in LeetCode"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
+            >
+              <span>LeetCode</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <button
+              id={`delete-question-btn-${question.id}`}
+              type="button"
+              onClick={() => onDeleteQuestion(question)}
+              title="Delete question and its submissions"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Short Summary */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GroupMember } from '../types.ts';
 import {
   Code2,
@@ -7,6 +7,9 @@ import {
   Users,
   Calendar,
   Sparkles,
+  Settings,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -17,6 +20,8 @@ interface NavbarProps {
   onOpenSwitchModal: () => void;
   selectedDateStr: string;
   onSelectToday: () => void;
+  onResetData?: () => void;
+  onClearAll?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -27,7 +32,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSwitchModal,
   selectedDateStr,
   onSelectToday,
+  onResetData,
+  onClearAll,
 }) => {
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowSettingsMenu(false);
+      }
+    }
+    if (showSettingsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSettingsMenu]);
   return (
     <header
       id="app-header"
@@ -123,6 +146,59 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <User className="w-4 h-4 text-slate-500" />
                 <span>Select Profile</span>
               </button>
+            )}
+
+            {/* Manage & Data Options */}
+            {(onResetData || onClearAll) && (
+              <div className="relative" ref={menuRef}>
+                <button
+                  id="navbar-settings-btn"
+                  type="button"
+                  onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                  title="Data & Storage Options"
+                  className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+
+                {showSettingsMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs animate-in fade-in slide-in-from-top-1">
+                    <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 tracking-wider border-b border-slate-100">
+                      Group Data & Reset
+                    </div>
+
+                    {onResetData && (
+                      <button
+                        id="menu-reset-sample-btn"
+                        type="button"
+                        onClick={() => {
+                          setShowSettingsMenu(false);
+                          onResetData();
+                        }}
+                        className="w-full px-3 py-2 text-left flex items-center gap-2 text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-blue-500" />
+                        <span>Reset to Sample Problems</span>
+                      </button>
+                    )}
+
+                    {onClearAll && (
+                      <button
+                        id="menu-clear-all-btn"
+                        type="button"
+                        onClick={() => {
+                          setShowSettingsMenu(false);
+                          onClearAll();
+                        }}
+                        className="w-full px-3 py-2 text-left flex items-center gap-2 text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Clear All Practice Data</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

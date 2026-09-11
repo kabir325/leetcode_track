@@ -11,6 +11,7 @@ import {
   Sparkles,
   AlertCircle,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 
 interface MemberSwitcherModalProps {
@@ -20,6 +21,7 @@ interface MemberSwitcherModalProps {
   currentMember: GroupMember | null;
   onSelectMember: (member: GroupMember | null) => void;
   onMemberCreated: (member: GroupMember) => void;
+  onDeleteMember: (member: GroupMember) => void;
 }
 
 export const MemberSwitcherModal: React.FC<MemberSwitcherModalProps> = ({
@@ -29,6 +31,7 @@ export const MemberSwitcherModal: React.FC<MemberSwitcherModalProps> = ({
   currentMember,
   onSelectMember,
   onMemberCreated,
+  onDeleteMember,
 }) => {
   const [activeTab, setActiveTab] = useState<'switch' | 'create'>('switch');
   const [newName, setNewName] = useState('');
@@ -147,51 +150,77 @@ export const MemberSwitcherModal: React.FC<MemberSwitcherModalProps> = ({
           {activeTab === 'switch' ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                {members.map((m) => {
-                  const isSelected = currentMember?.id === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      id={`select-member-btn-${m.id}`}
-                      onClick={() => {
-                        onSelectMember(m);
-                        onClose();
-                      }}
-                      className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-500/20 shadow-xs'
-                          : 'bg-white hover:bg-slate-50 border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full bg-gradient-to-tr ${m.avatarColor} flex items-center justify-center text-white font-bold text-xs shadow-xs`}
+                {members.length > 0 ? (
+                  members.map((m) => {
+                    const isSelected = currentMember?.id === m.id;
+                    return (
+                      <div
+                        key={m.id}
+                        className={`w-full p-2.5 sm:p-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                          isSelected
+                            ? 'bg-blue-50/70 border-blue-300 ring-2 ring-blue-500/20 shadow-xs'
+                            : 'bg-white hover:bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <button
+                          id={`select-member-btn-${m.id}`}
+                          type="button"
+                          onClick={() => {
+                            onSelectMember(m);
+                            onClose();
+                          }}
+                          className="flex-1 flex items-center justify-between text-left cursor-pointer min-w-0"
                         >
-                          {m.avatarInitials}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-slate-900">
-                            {m.name}
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-full bg-gradient-to-tr ${m.avatarColor} flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0`}
+                            >
+                              {m.avatarInitials}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-slate-900 truncate">
+                                {m.name}
+                              </div>
+                              <div className="text-xs font-mono text-slate-400 truncate">
+                                @{m.handle}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs font-mono text-slate-400">
-                            @{m.handle}
-                          </div>
-                        </div>
-                      </div>
 
-                      {isSelected ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Active</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400 group-hover:text-slate-600 font-medium">
-                          Select →
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                          <div className="ml-2 shrink-0">
+                            {isSelected ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Active</span>
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400 hover:text-slate-600 font-medium">
+                                Select →
+                              </span>
+                            )}
+                          </div>
+                        </button>
+
+                        <button
+                          id={`delete-member-btn-${m.id}`}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteMember(m);
+                          }}
+                          title={`Remove ${m.name} from group`}
+                          className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                    No members in this group yet. Switch to the tab above to add a friend!
+                  </div>
+                )}
               </div>
 
               {/* Leave / Log out */}

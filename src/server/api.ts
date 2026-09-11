@@ -681,5 +681,35 @@ Return strictly a JSON object with this exact shape:
     res.json({ success: true, questions, submissions });
   });
 
+  // DELETE /api/members/:id -> delete a member and their submissions
+  router.delete('/members/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    members = members.filter((m) => m.id !== id);
+    submissions = submissions.filter((s) => s.userId !== id);
+    res.json({ success: true, members, submissions });
+  });
+
+  // DELETE /api/submissions/:id -> delete a specific submission
+  router.delete('/submissions/:id', (req: Request, res: Response) => {
+    const { id } = req.params;
+    submissions = submissions.filter((s) => s.id !== id);
+    res.json({ success: true, submissions });
+  });
+
+  // POST /api/reset-data -> reset to initial default questions and members
+  router.post('/reset-data', (_req: Request, res: Response) => {
+    members = [...defaultMembers];
+    questions = [...defaultQuestions];
+    submissions = [...defaultSubmissions];
+    res.json({ success: true, members, questions, submissions });
+  });
+
+  // POST /api/clear-all -> clear all questions and submissions for a clean slate
+  router.post('/clear-all', (_req: Request, res: Response) => {
+    questions = [];
+    submissions = [];
+    res.json({ success: true, members, questions, submissions });
+  });
+
   return router;
 }

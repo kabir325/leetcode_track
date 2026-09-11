@@ -5,6 +5,11 @@ import {
   getCurrentUserId,
   setCurrentUserId,
   formatDateKey,
+  deleteQuestion,
+  deleteMember,
+  deleteSubmission,
+  resetGroupData,
+  clearAllQuestionsAndSubmissions,
 } from './services/apiClient.ts';
 import { Navbar } from './components/Navbar.tsx';
 import { DailyOverview } from './components/DailyOverview.tsx';
@@ -15,6 +20,7 @@ import { SolutionDetailsModal } from './components/SolutionDetailsModal.tsx';
 import { PostQuestionModal } from './components/PostQuestionModal.tsx';
 import { ProfileModal } from './components/ProfileModal.tsx';
 import { MemberSwitcherModal } from './components/MemberSwitcherModal.tsx';
+import { ConfirmModal } from './components/ConfirmModal.tsx';
 import {
   PlusCircle,
   HelpCircle,
@@ -39,6 +45,22 @@ export default function App() {
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+
+  // Confirmation modal state
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Active targets for inspection modals
   const [detailedQuestion, setDetailedQuestion] = useState<DailyQuestion | null>(null);
@@ -110,6 +132,136 @@ export default function App() {
   // Add member handler
   const handleMemberCreated = (newMember: GroupMember) => {
     setMembers((prev) => [...prev, newMember]);
+    if (!currentMember) {
+      setCurrentMember(newMember);
+      setCurrentUserId(newMember.id);
+    }
+  };
+
+  // Deletion: Question
+  const handleDeleteQuestion = (question: DailyQuestion) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Problem',
+      message: `Are you sure you want to delete "${question.title}"? Any solutions submitted for this problem will also be removed.`,
+      confirmText: 'Delete Problem',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await deleteQuestion(question.id);
+          setQuestions(res.questions);
+          setSubmissions(res.submissions);
+          if (detailedQuestion?.id === question.id) {
+            setDetailedQuestion(null);
+          }
+          if (inspectingSubmission?.question.id === question.id) {
+            setInspectingSubmission(null);
+          }
+        } catch (err) {
+          console.error('Failed to delete question:', err);
+        }
+      },
+    });
+  };
+
+  // Deletion: Member
+  const handleDeleteMember = (member: GroupMember) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Remove Member',
+      message: `Are you sure you want to remove ${member.name} (@${member.handle}) from the group? All their submissions will also be deleted.`,
+      confirmText: 'Remove Member',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await deleteMember(member.id);
+          setMembers(res.members);
+          setSubmissions(res.submissions);
+          if (currentMember?.id === member.id) {
+            const next = res.members.length > 0 ? res.members[0] : null;
+            setCurrentMember(next);
+            if (next) {
+              setCurrentUserId(next.id);
+            }
+          }
+          if (inspectingMember?.id === member.id) {
+            setInspectingMember(null);
+            setIsProfileModalOpen(false);
+          }
+        } catch (err) {
+          console.error('Failed to delete member:', err);
+        }
+      },
+    });
+  };
+
+  // Deletion: Submission
+  const handleDeleteSubmission = (submissionId: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Submission',
+      message: 'Are you sure you want to delete this recorded LeetCode submission?',
+      confirmText: 'Delete Submission',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await deleteSubmission(submissionId);
+          setSubmissions(res.submissions);
+          if (inspectingSubmission?.submission.id === submissionId) {
+            setInspectingSubmission(null);
+          }
+        } catch (err) {
+          console.error('Failed to delete submission:', err);
+        }
+      },
+    });
+  };
+
+  // Reset to Sample Problems
+  const handleResetData = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Reset to Sample Data',
+      message: 'This will restore default problems and group member profiles. Any custom questions created will be replaced with the curated set. Continue?',
+      confirmText: 'Reset Practice Data',
+      isDanger: false,
+      onConfirm: async () => {
+        try {
+          const res = await resetGroupData();
+          setMembers(res.members || []);
+          setQuestions(res.questions || []);
+          setSubmissions(res.submissions || []);
+          if (res.members && res.members.length > 0) {
+            setCurrentMember(res.members[0]);
+            setCurrentUserId(res.members[0].id);
+          }
+        } catch (err) {
+          console.error('Failed to reset data:', err);
+        }
+      },
+    });
+  };
+
+  // Clear All Questions and Submissions
+  const handleClearAll = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Clear All Practice Data',
+      message: 'This will delete all scheduled questions and submitted solutions, giving your group a clean slate. Existing user profiles will be kept. Continue?',
+      confirmText: 'Clear All Questions',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await clearAllQuestionsAndSubmissions();
+          setQuestions(res.questions || []);
+          setSubmissions(res.submissions || []);
+          setDetailedQuestion(null);
+          setInspectingSubmission(null);
+        } catch (err) {
+          console.error('Failed to clear data:', err);
+        }
+      },
+    });
   };
 
   // Filter questions for the selected day
@@ -129,6 +281,8 @@ export default function App() {
         onOpenSwitchModal={() => setIsSwitchModalOpen(true)}
         selectedDateStr={selectedDate}
         onSelectToday={() => setSelectedDate(formatDateKey(new Date()))}
+        onResetData={handleResetData}
+        onClearAll={handleClearAll}
       />
 
       {/* Main Content Area */}
@@ -187,6 +341,7 @@ export default function App() {
                     setIsSubmitModalOpen(true);
                   }}
                   onOpenSolutionModal={(sub, q) => setInspectingSubmission({ submission: sub, question: q })}
+                  onDeleteQuestion={handleDeleteQuestion}
                 />
               ))}
             </div>
@@ -238,6 +393,7 @@ export default function App() {
           setSubmittingQuestion(q);
           setIsSubmitModalOpen(true);
         }}
+        onDeleteQuestion={handleDeleteQuestion}
       />
 
       <SubmitSolutionModal
@@ -256,6 +412,7 @@ export default function App() {
         submission={inspectingSubmission?.submission || null}
         question={inspectingSubmission?.question || null}
         onClose={() => setInspectingSubmission(null)}
+        onDeleteSubmission={handleDeleteSubmission}
       />
 
       <ProfileModal
@@ -273,6 +430,8 @@ export default function App() {
           setIsSubmitModalOpen(true);
         }}
         onOpenSolutionModal={(sub, q) => setInspectingSubmission({ submission: sub, question: q })}
+        onDeleteMember={handleDeleteMember}
+        onDeleteSubmission={handleDeleteSubmission}
       />
 
       <MemberSwitcherModal
@@ -282,6 +441,19 @@ export default function App() {
         currentMember={currentMember}
         onSelectMember={handleSelectMember}
         onMemberCreated={handleMemberCreated}
+        onDeleteMember={handleDeleteMember}
+      />
+
+      {/* Global Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
+        isDanger={confirmConfig.isDanger}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

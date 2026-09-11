@@ -11,18 +11,21 @@ import {
   Calendar,
   Sparkles,
   Award,
+  Trash2,
 } from 'lucide-react';
 
 interface SolutionDetailsModalProps {
   submission: QuestionSubmission | null;
   question: DailyQuestion | null;
   onClose: () => void;
+  onDeleteSubmission?: (submissionId: string) => void;
 }
 
 export const SolutionDetailsModal: React.FC<SolutionDetailsModalProps> = ({
   submission,
   question,
   onClose,
+  onDeleteSubmission,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -203,16 +206,32 @@ export const SolutionDetailsModal: React.FC<SolutionDetailsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between">
-          <a
-            href={submission.submissionUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-          >
-            <span>View on LeetCode</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+        <div className="p-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <a
+              href={submission.submissionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              <span>View on LeetCode</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            {onDeleteSubmission && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDeleteSubmission(submission.id);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200/80 transition-colors cursor-pointer ml-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Submission</span>
+              </button>
+            )}
+          </div>
 
           <button
             onClick={onClose}

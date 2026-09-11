@@ -12,6 +12,7 @@ import {
   HardDrive,
   Calendar,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -23,6 +24,8 @@ interface ProfileModalProps {
   selectedDate: string;
   onOpenSubmitModal: (question?: DailyQuestion) => void;
   onOpenSolutionModal: (submission: QuestionSubmission, question: DailyQuestion) => void;
+  onDeleteMember?: (member: GroupMember) => void;
+  onDeleteSubmission?: (submissionId: string) => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -34,6 +37,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   selectedDate,
   onOpenSubmitModal,
   onOpenSolutionModal,
+  onDeleteMember,
+  onDeleteSubmission,
 }) => {
   if (!isOpen || !member) return null;
 
@@ -252,17 +257,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   return (
                     <div
                       key={sub.id}
-                      onClick={() => {
-                        if (q) {
-                          onClose();
-                          onOpenSolutionModal(sub, q);
-                        }
-                      }}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
-                      <div>
+                      <div
+                        onClick={() => {
+                          if (q) {
+                            onClose();
+                            onOpenSolutionModal(sub, q);
+                          }
+                        }}
+                        className="flex-1 cursor-pointer"
+                      >
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900">
+                          <span className="text-xs font-bold text-slate-900 hover:text-blue-600 transition-colors">
                             {q?.title || 'LeetCode Question'}
                           </span>
                           <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -285,6 +292,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           <HardDrive className="w-3 h-3 text-emerald-500" />
                           {sub.spaceComplexity}
                         </span>
+
+                        {onDeleteSubmission && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteSubmission(sub.id);
+                            }}
+                            title="Delete this submission"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer ml-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -295,7 +316,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div>
+            {onDeleteMember && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDeleteMember(member);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl border border-rose-200/80 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Member Profile</span>
+              </button>
+            )}
+          </div>
+
           <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"

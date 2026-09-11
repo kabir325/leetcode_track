@@ -10,18 +10,21 @@ import {
   HardDrive,
   UploadCloud,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 
 interface ProblemDetailsModalProps {
   question: DailyQuestion | null;
   onClose: () => void;
   onOpenSubmitModal: (question: DailyQuestion) => void;
+  onDeleteQuestion?: (question: DailyQuestion) => void;
 }
 
 export const ProblemDetailsModal: React.FC<ProblemDetailsModalProps> = ({
   question,
   onClose,
   onOpenSubmitModal,
+  onDeleteQuestion,
 }) => {
   if (!question) return null;
 
@@ -212,15 +215,32 @@ export const ProblemDetailsModal: React.FC<ProblemDetailsModalProps> = ({
 
         {/* Modal Footer */}
         <div className="p-5 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
-          <a
-            href={question.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-900 px-4 py-2 rounded-xl border border-slate-300 hover:bg-white transition-colors"
-          >
-            <span>Open on LeetCode</span>
-            <ExternalLink className="w-4 h-4 text-slate-500" />
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={question.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-900 px-4 py-2 rounded-xl border border-slate-300 hover:bg-white transition-colors"
+            >
+              <span>Open on LeetCode</span>
+              <ExternalLink className="w-4 h-4 text-slate-500" />
+            </a>
+
+            {onDeleteQuestion && (
+              <button
+                id="details-delete-question-btn"
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDeleteQuestion(question);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs font-semibold border border-rose-200/80 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Problem</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button
