@@ -29,14 +29,35 @@ export function formatDisplayDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+async function safeFetchJson<T>(
+  input: RequestInfo,
+  init?: RequestInit,
+  fallbackErrorMsg = 'Network request failed'
+): Promise<T> {
+  const res = await fetch(input, init);
+  const contentType = res.headers.get('content-type') || '';
+
+  if (!contentType.includes('application/json')) {
+    const text = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new Error(`Server error (${res.status}): ${fallbackErrorMsg}`);
+    }
+    // If somehow an HTML page was returned
+    throw new Error('Received unexpected non-JSON response from server.');
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || fallbackErrorMsg);
+  }
+  return data as T;
+}
+
 export async function fetchGroupData(): Promise<GroupData> {
   try {
-    const res = await fetch('/api/group-data');
-    if (res.ok) {
-      const data: GroupData = await res.json();
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-      return data;
-    }
+    const data = await safeFetchJson<GroupData>('/api/group-data', undefined, 'Could not fetch group data');
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+    return data;
   } catch (err) {
     console.warn('Backend /api/group-data request failed, falling back to localStorage:', err);
   }
@@ -64,18 +85,16 @@ export async function postNewProblem(params: {
   postedByUserId: string;
   postedByUserName: string;
 }): Promise<{ question: DailyQuestion; questions: DailyQuestion[] }> {
-  const res = await fetch('/api/parse-problem', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
+  const result = await safeFetchJson<{ question: DailyQuestion; questions: DailyQuestion[] }>(
+    '/api/parse-problem',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+    'Failed to parse LeetCode problem'
+  );
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Failed to parse LeetCode problem');
-  }
-
-  const result = await res.json();
   return {
     question: result.question,
     questions: result.questions,
@@ -91,18 +110,16 @@ export async function submitSolution(params: {
   submissionUrl: string;
   codeSnippet?: string;
 }): Promise<{ submission: QuestionSubmission; submissions: QuestionSubmission[] }> {
-  const res = await fetch('/api/analyze-submission', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
+  const result = await safeFetchJson<{ submission: QuestionSubmission; submissions: QuestionSubmission[] }>(
+    '/api/analyze-submission',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+    'Failed to analyze submission'
+  );
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Failed to analyze submission');
-  }
-
-  const result = await res.json();
   return {
     submission: result.submission,
     submissions: result.submissions,
@@ -115,18 +132,16 @@ export async function createMember(params: {
   bio?: string;
   avatarColor?: string;
 }): Promise<{ member: GroupMember; members: GroupMember[] }> {
-  const res = await fetch('/api/members', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
+  const result = await safeFetchJson<{ member: GroupMember; members: GroupMember[] }>(
+    '/api/members',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    },
+    'Failed to create member'
+  );
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Failed to create member');
-  }
-
-  const result = await res.json();
   return {
     member: result.member,
     members: result.members,
