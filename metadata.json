@@ -1,0 +1,6 @@
+{
+  "name": "LeetCode Group Tracker",
+  "description": "Collaborative daily LeetCode tracker for friends with AI problem breakdown and solution complexity analysis",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
